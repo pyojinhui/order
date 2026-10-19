@@ -783,7 +783,10 @@ with center_col:
                     model = genai.GenerativeModel(
                         "gemini-3.5-flash-lite", generation_config=generation_config
                     )
-                    response = model.generate_content(prompt)
+                    response = model.generate_content(
+                       prompt,
+                       request_options={"timeout": 30}
+                    )
 
                     raw_result = response.text.strip()
 
