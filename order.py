@@ -773,7 +773,9 @@ with center_col:
             분석할 카톡 메시지:
             \"\"\"{user_input}\"\"\"
             """
-
+if not api_key:
+    st.error("Gemini API 키를 찾을 수 없습니다. 배포 환경의 Secrets 설정을 확인해 주세요.")
+    st.stop()
             with st.spinner("Gemini AI가 문맥을 분석하여 파싱 중입니다..."):
                 try:
                     generation_config = {"temperature": 0.0}
