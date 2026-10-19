@@ -787,6 +787,7 @@ with center_col:
                        prompt,
                        request_options={"timeout": 30}
                     )
+                    st.write("Gemini 응답 완료")
 
                     raw_result = response.text.strip()
 
