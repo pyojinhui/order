@@ -1,9 +1,13 @@
 import json
 import os
 import re
+import base64
+from io import BytesIO
 import google.generativeai as genai
 import pandas as pd
 import streamlit as st
+import streamlit.components.v1 as components
+from PIL import Image
 
 api_key = os.environ.get("GEMINI_API_KEY")
 
@@ -20,6 +24,11 @@ if api_key:
 APP_PASSWORD = "1234"
 
 st.set_page_config(page_title="주문서 자동 변환", layout="wide")
+
+PASTE_TEXTAREA = components.declare_component(
+    "paste_textarea",
+    path=os.path.join(os.path.dirname(os.path.abspath(__file__)), "paste_textarea"),
+)
 
 st.markdown(
     """
@@ -227,16 +236,28 @@ with center_col:
         "오타, 쉼표(0,7), s/d 구분, 병원별 전용 모델, OAA 고유 코드 매핑까지 완벽히 파싱합니다."
     )
 
-    user_input = st.text_area(
-        "카톡 주문 메시지 전체 복사/붙여넣기",
-        height=300,
-        placeholder="여기에 카톡 메시지를 복사해서 넣으세요...",
-        key="kakao_order_input"
+    paste_result = PASTE_TEXTAREA(
+        value={
+            "text": st.session_state.get("order_input_text", ""),
+            "image_data": st.session_state.get("order_input_image", ""),
+        },
+        key="order_input_component",
+        default={"text": "", "image_data": ""},
     )
 
+    if isinstance(paste_result, dict):
+        user_input = str(paste_result.get("text", ""))
+        pasted_image_data = str(paste_result.get("image_data", ""))
+        st.session_state["order_input_text"] = user_input
+        st.session_state["order_input_image"] = pasted_image_data
+    else:
+        user_input = st.session_state.get("order_input_text", "")
+        pasted_image_data = st.session_state.get("order_input_image", "")
+
+
     if st.button("주문 값 자동 추출하기", type="primary", use_container_width=True, key="extract_btn"):
-        if not user_input.strip():
-            st.warning("카톡 메시지를 입력해 주세요.")
+        if not user_input.strip() and not pasted_image_data:
+            st.warning("카톡 메시지를 입력하거나 주문서 이미지를 글 입력칸에 붙여넣어 주세요.")
         elif not api_key:
             st.error("GEMINI_API_KEY가 설정되지 않았습니다.")
         else:
@@ -446,15 +467,11 @@ with center_col:
                "0.6 thin" -> thin은 0.6에 존재하지 않으므로 임의로 T를 붙이지 않음
 
              [교체용니들 예시]
-             - 교체용니들 0.8 기본 -> "OAA-2109(1)"
-             - 교체용니들 0.8 thin -> "OAA-2109T(1)"
-             - 교체용니들 0.8 wide -> "OAA-2109W(1)"
-             - 교체용니들 0.8 dull -> "OAA-2109D(1)"
+             - 교체용니들 1.0 기본 → 품목명: "교체용니들 1.0", 품목코드: "OAA-2110(1)"
+             - 교체용니들 1.0 thin → 품목명: "교체용니들 1.0 thin", 품목코드: "OAA-2110T(1)"
+             - 교체용니들 1.0 wide → 품목명: "교체용니들 1.0 wide", 품목코드: "OAA-2110W(1)"
+             - 교체용니들 1.0 dull → 품목명: "교체용니들 1.0 dull", 품목코드: "OAA-2110D(1)"
 
-             - 교체용니들 1.0 기본 -> "OAA-2110(1)"
-             - 교체용니들 1.0 thin -> "OAA-2110T(1)"
-             - 교체용니들 1.0 wide -> "OAA-2110W(1)"
-             - 교체용니들 1.0 dull -> "OAA-2110D(1)"
 
              [중요]
              - "thin", "wide", "dull"은 규격과 별개의 특수모델 정보입니다.
@@ -773,9 +790,7 @@ with center_col:
             분석할 카톡 메시지:
             \"\"\"{user_input}\"\"\"
             """
-            if not api_key:
-                st.error("Gemini API 키를 찾을 수 없습니다. 배포 환경의 Secrets 설정을 확인해 주세요.")
-                st.stop()
+
             with st.spinner("Gemini AI가 문맥을 분석하여 파싱 중입니다..."):
                 try:
                     generation_config = {"temperature": 0.0}
@@ -783,11 +798,16 @@ with center_col:
                     model = genai.GenerativeModel(
                         "gemini-3.5-flash-lite", generation_config=generation_config
                     )
-                    response = model.generate_content(
-                       prompt,
-                       request_options={"timeout": 30}
-                    )
-                    st.write("Gemini 응답 완료")
+
+                    contents = [prompt]
+                    if pasted_image_data:
+                        image_base64 = pasted_image_data.split(",", 1)[-1]
+                        pasted_image = Image.open(
+                            BytesIO(base64.b64decode(image_base64))
+                        )
+                        contents.append(pasted_image)
+
+                    response = model.generate_content(contents)
 
                     raw_result = response.text.strip()
 
@@ -801,65 +821,106 @@ with center_col:
                         clean_json = raw_result[start_idx : end_idx + 1]
 
                         parsed_result = json.loads(clean_json)
-                                               # ====================================================
-                       # 교체용니들 품목코드 강제 매핑
-                       # ====================================================
+                      
+                       
+                        # ====================================================
+                        # 교체용니들 / 모발이식장치 품목명 및 코드 강제 매핑
+                        # ====================================================
                         NEEDLE_CODE_MAP = {
-                           "0.6": "OAA-2199(1)",
-                           "0.7": "OAA-2112(1)",
-                           "0.8": "OAA-2109(1)",
-                           "0.9": "OAA-2113(1)",
-                           "1.0": "OAA-2110(1)",
-                           "1.1": "OAA-2196(1)",
-                           "1.2": "OAA-2111(1)",
-                       }
+                            "0.6": "OAA-2199(1)",
+                            "0.7": "OAA-2112(1)",
+                            "0.8": "OAA-2109(1)",
+                            "0.9": "OAA-2113(1)",
+                            "1.0": "OAA-2110(1)",
+                            "1.1": "OAA-2196(1)",
+                            "1.2": "OAA-2111(1)",
+                        }
 
                         for row in parsed_result:
-                           item_name = str(row.get("item_name", "")).strip()
-                           original_text = str(row.get("original", "")).strip()
+                            item_name = str(row.get("item_name", "")).strip()
+                            original_text = str(row.get("original", "")).strip()
+                            lower_text = f"{item_name} {original_text}".lower()
 
-                           # 교체용니들 품목에만 적용
-                           if "교체용니들" not in item_name:
-                               continue
+                            # 품목 분류
+                            is_needle = (
+                                "교체용니들" in item_name
+                                or "식모기니들" in original_text
+                                or "교체용니들" in original_text
+                            )
 
-                           # 품목명에서 규격 추출
-                           size_match = re.search(
-                               r"교체용니들\s*([01][.,]\d{1,2})",
-                               item_name
-                           )
+                            is_implanter = (
+                                not is_needle
+                                and (
+                                    "모발이식장치" in item_name
+                                    or (
+                                        "식모기" in original_text
+                                        and "니들" not in original_text
+                                        and "팁" not in original_text
+                                    )
+                                    or "implanter" in lower_text
+                                )
+                            )
 
-                           if not size_match:
-                               continue
+                            if not is_needle and not is_implanter:
+                                continue
 
-                           size = size_match.group(1).replace(",", ".")
-                           base_code = NEEDLE_CODE_MAP.get(size)
+                            # 규격 추출
+                            size_match = re.search(
+                                r"(?<!\d)(0[.,]\d{1,2}|1[.,]\d{1,2})(?!\d)",
+                                f"{item_name} {original_text}"
+                            )
 
-                           if not base_code:
-                               continue
+                            if not size_match:
+                                continue
 
-                           # 특수 모델 확인
-                           original_lower = original_text.lower()
-                           suffix = ""
+                            size = size_match.group(1).replace(",", ".")
+                            base_code = NEEDLE_CODE_MAP.get(size)
 
-                           if re.search(r"thin|씬|띤", original_lower):
-                               suffix = "T"
-                           elif re.search(r"wide|와이드", original_lower):
-                               suffix = "W"
-                           elif re.search(r"dull|덜", original_lower):
-                               suffix = "D"
+                            if not base_code:
+                                continue
 
-                           # 특수 모델 적용 가능 규격 제한
-                           if suffix == "T" and size not in ("0.8", "1.0"):
-                               suffix = ""
-                           elif suffix == "W" and size not in (
-                               "0.7", "0.8", "0.9", "1.0"
-                           ):
-                               suffix = ""
+                            # 특수 모델 판별
+                            suffix = ""
 
-                           # 최종 품목코드 적용
-                           row["item_code"] = base_code.replace(
-                               "(1)", f"{suffix}(1)"
-                           )
+                            if re.search(r"\bthin\b|씬|띤", lower_text):
+                                suffix = "T"
+                            elif re.search(r"\bwide\b|와이드", lower_text):
+                                suffix = "W"
+                            elif re.search(r"\bdull\b|덜", lower_text):
+                                suffix = "D"
+
+                            # 허용 규격 검증
+                            if suffix == "T" and size not in ("0.8", "1.0"):
+                                suffix = ""
+                            elif suffix == "W" and size not in (
+                                "0.7", "0.8", "0.9", "1.0"
+                            ):
+                                suffix = ""
+
+
+                            # 품목명과 품목코드 모두 반영
+                            suffix_name_map = {
+                                "T": "thin",
+                                "W": "wide",
+                                "D": "dull",
+                            }
+                            item_type = (
+                                "교체용니들" if is_needle else "모발이식장치"
+                            )
+                            suffix_name = suffix_name_map.get(suffix, "")
+
+                            if suffix_name:
+                                row["item_name"] = (
+                                    f"{item_type} {size} {suffix_name}"
+                                )
+                            else:
+                                row["item_name"] = f"{item_type} {size}"
+
+                            row["item_code"] = base_code.replace(
+                                "(1)", f"{suffix}(1)"
+                            )
+
+
 
                         
                         # ====================================================
@@ -1030,6 +1091,9 @@ with center_col:
         selected_mode = device_unit_mode if device_unit_mode else "5개 단위 (기본)"
         multiplier = 10 if "10개" in selected_mode else 5
 
+        selected_mode = device_unit_mode if device_unit_mode else "5개 단위 (기본)"
+        multiplier = 10 if "10개" in selected_mode else 5
+
         processed_rows = []
         for idx, item in enumerate(parsed_data, 1):
             item_name = str(item.get("item_name", ""))
@@ -1071,16 +1135,42 @@ with center_col:
                 "수량 환산": display_qty,
             })
 
+        # ====================================================
+        # [추가] 표 맨 아래 총합계 행 계산 및 HTML 병합 처리
+        # ====================================================
+        total_qty_sum = 0
+        for r in processed_rows:
+            q_str = str(r["수량 환산"])
+            m = re.search(r"(\d+)", q_str)
+            if m:
+                total_qty_sum += int(m.group(1))
+
+        # 합계 행 추가 (앞선 5개 칸은 빈칸, 마지막 수량 환산 칸에 총합계 숫자)
+        summary_row = {
+            "No.": "총합계",
+            "주문처(병원)": "",
+            "원문 텍스트": "",
+            "품목코드": "",
+            "품목명": "",
+            "수량 환산": f"{total_qty_sum}",
+        }
+        processed_rows.append(summary_row)
+
         df = pd.DataFrame(processed_rows)
 
-        # st.dataframe/st.table의 내부 정렬 CSS에 의존하지 않고
-        # 실제 HTML 셀(th/td)에 직접 정렬을 지정한다.
+        # HTML 표 변환
         html_table = df.to_html(
             index=False,
             classes="order-result-table",
             border=0,
             escape=True,
         )
+
+        # [수정] 정규식을 사용하여 공백/줄바꿈에 관계없이 마지막 '총합계' 행을 찾아 5칸 병합 적용
+        pattern = r'<tr>\s*<td>총합계</td>\s*<td></td>\s*<td></td>\s*<td></td>\s*<td></td>\s*(<td>.*?</td>)\s*</tr>'
+        replacement = r'<tr>\n<td colspan="5" style="text-align: center; font-weight: bold;">총합계</td>\n\1\n</tr>'
+        html_table = re.sub(pattern, replacement, html_table, flags=re.DOTALL)
+
         st.markdown(html_table, unsafe_allow_html=True)
 
         csv = df.to_csv(index=False).encode("utf-8-sig")
