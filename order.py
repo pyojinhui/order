@@ -424,7 +424,9 @@ with center_col:
               - INNER BODY와 모발이식장치는 규격 숫자(0.6~1.2)가 동일하더라도 서로 완전히 다른 품목입니다.
               - 숫자만 보고 품목을 판단하거나 매핑하지 마세요.
               - 주문 원문에 "INNER BODY", "INNERBODY", "이너바디"가 명시되어 있으면 반드시 INNER_BODY_MAP을 사용하세요.
-              - 주문 원문에 "식모기", "모발이식장치", "장치", "본체"가 명시되어 있으면 반드시 DEVICE_MAP을 사용하세요.
+              - 단, 주문 원문에 "STAFF" 또는 "staff(봉)"이 포함된 경우에는 아래의 STAFF 구분 규칙을 최우선 적용합니다.
+              - STAFF 품목에 "[바늘(식모기)]"가 함께 표시되어도 DEVICE_MAP을 사용하지 않습니다.
+              - STAFF 또는 staff(봉)이 포함되지 않은 주문에만 "식모기", "모발이식장치", "장치", "본체"를 근거로 DEVICE_MAP을 적용합니다.
               - 예:
               - "INNER BODY 0.8" → OHA-2065A / INNER BODY(0.8)
               - "이너바디 0.8" → OHA-2065A / INNER BODY(0.8)
@@ -433,37 +435,30 @@ with center_col:
               - "0.8"처럼 규격 숫자만 단독으로 있는 경우에는 임의로 INNER BODY 또는 모발이식장치로 판단하지 마세요.
 
 
-[STAFF 구분 규칙]
-- 주문 원문에 STAFF가 명시된 경우 적용합니다.
-- 주문 원문에서 규격을 확인한 후 아래 매핑 기준에 따라 품목코드를 변환합니다.
-- 하나의 품목코드에 여러 규격이 연결된 경우, 해당 규격 중 하나라도 일치하면 동일한 품목코드를 적용합니다.
+                [STAFF 구분 규칙]
+                - 주문 원문에 STAFF가 명시된 경우 적용합니다.
+                - 주문 원문에서 규격을 확인한 후 아래 매핑 기준에 따라 품목코드를 변환합니다.
+                - 하나의 품목코드에 여러 규격이 연결된 경우, 해당 규격 중 하나라도 일치하면 동일한 품목코드를 적용합니다.
 
-  - 규격 0.6 → 품목코드: OGG-0004D / 품목명: STAFF(0.6)
-  - 규격 0.7 → 품목코드: OGG-0004E / 품목명: STAFF(0.7)
-  - 규격 0.8 → 품목코드: OGG-0004A / 품목명: STAFF(0.8)
-  - 규격 0.9 또는 1.0 → 품목코드: OGG-0004B / 품목명: STAFF(0.9&1.0)
-  - 규격 1.1 또는 1.2 → 품목코드: OGG-0004C / 품목명: STAFF(1.1&1.2)
+                - 규격 0.6 → 품목코드: OGG-0004D / 품목명: STAFF(0.6)
+                - 규격 0.7 → 품목코드: OGG-0004E / 품목명: STAFF(0.7)
+                - 규격 0.8 → 품목코드: OGG-0004A / 품목명: STAFF(0.8)
+                - 규격 0.9 또는 1.0 → 품목코드: OGG-0004B / 품목명: STAFF(0.9&1.0)
+                - 규격 1.1 또는 1.2 → 품목코드: OGG-0004C / 품목명: STAFF(1.1&1.2)
 
-- 주의사항:
-  - 규격은 반드시 주문 원문에 명시된 값을 기준으로 판별합니다.
-  - 규격이 여러 개 기재된 경우 각 규격에 해당하는 품목코드를 개별적으로 적용합니다.
-  - 등록된 규격에 해당하지 않거나 규격을 확인할 수 없는 경우 임의로 품목코드를 지정하지 않습니다.
-  - 다른 품목 유형의 규격 매핑 규칙과 혼동하지 않습니다.
+                - 주의사항:
+                  - 규격은 반드시 주문 원문에 명시된 값을 기준으로 판별합니다.
+                  - 규격이 여러 개 기재된 경우 각 규격에 해당하는 품목코드를 개별적으로 적용합니다.
+                  - 등록된 규격에 해당하지 않거나 규격을 확인할 수 없는 경우 임의로 품목코드를 지정하지 않습니다.
+                  - 다른 품목 유형의 규격 매핑 규칙과 혼동하지 않습니다.
 
-  
-[STAFF 품목 유형 식별 규칙]
+                  [STAFF 품목 우선 판별 규칙]
 
-- 주문 원문에 STAFF 또는 staff(봉)이 명시되고, [바늘(식모기)]라는 표현이 포함된 경우 식모기 바늘 품목으로 분류합니다.
-- 해당 주문은 모발이식장치로 분류하지 않습니다.
-- STAFF 품목은 [STAFF 구분 규칙]에 따라 규격별 품목코드를 적용합니다.
-- 규격별 매핑:
-  - 0.6 → OGG-0004D
-  - 0.7 → OGG-0004E
-  - 0.8 → OGG-0004A
-  - 0.9 또는 1.0 → OGG-0004B
-  - 1.1 또는 1.2 → OGG-0004C
-- 품목명에 STAFF, staff(봉), 바늘(식모기) 등이 포함된 경우 해당 키워드를 근거로 품목 유형을 우선 판별합니다.
-
+                  - 주문 원문에 `staff(봉)` 또는 `STAFF`가 포함된 경우 STAFF 품목으로 우선 판별합니다.
+                  - 품목명에 `[바늘(식모기)]`가 함께 기재되어 있어도 STAFF 품목 분류를 유지합니다.
+                  - `[바늘(식모기)]` 문구만을 근거로 STAFF 품목을 `모발이식장치`로 분류하지 않습니다.
+                  - STAFF 규격별 품목코드는 기존 `[STAFF 구분 규칙]`을 따릅니다.
+                  - STAFF 이외의 주문은 기존 품목 분류 규칙을 그대로 적용합니다.
 
 
 
@@ -930,14 +925,42 @@ with center_col:
                         for row in parsed_result:
                             item_name = str(row.get("item_name", "")).strip()
                             original_text = str(row.get("original", "")).strip()
-                            lower_text = f"{item_name} {original_text}".lower()
 
-                            # 품목 분류
+                            # STAFF 품목 우선 매핑
+                            staff_code_map = {
+                                "0.6": ("OGG-0004D", "STAFF(0.6)"),
+                                "0.7": ("OGG-0004E", "STAFF(0.7)"),
+                                "0.8": ("OGG-0004A", "STAFF(0.8)"),
+                                "0.9": ("OGG-0004B", "STAFF(0.9&1.0)"),
+                                "1.0": ("OGG-0004B", "STAFF(0.9&1.0)"),
+                                "1.1": ("OGG-0004C", "STAFF(1.1&1.2)"),
+                                "1.2": ("OGG-0004C", "STAFF(1.1&1.2)"),
+                            }
+
+                            if re.search(r"staff", f"{item_name} {original_text}", re.IGNORECASE):
+                                staff_size_match = re.search(
+                                    r"(?<!\d)(0[.,]\d{1,2}|1[.,]\d{1,2})(?!\d)",
+                                    f"{item_name} {original_text}"
+                                )
+
+                                if staff_size_match:
+                                    staff_size = staff_size_match.group(1).replace(",", ".")
+                                    staff_mapping = staff_code_map.get(staff_size)
+
+                                    if staff_mapping:
+                                        row["item_code"] = staff_mapping[0]
+                                        row["item_name"] = staff_mapping[1]
+
+                                # STAFF는 기존 장치/니들 분류에서 제외
+                                continue
+
                             is_needle = (
                                 "교체용니들" in item_name
                                 or "식모기니들" in original_text
                                 or "교체용니들" in original_text
                             )
+
+                            lower_text = f"{item_name} {original_text}".lower()
 
                             is_implanter = (
                                 not is_needle
