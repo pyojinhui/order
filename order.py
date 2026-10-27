@@ -921,6 +921,16 @@ with center_col:
                             "1.1": "OAA-2196(1)",
                             "1.2": "OAA-2111(1)",
                         }
+                                                    # 모발이식장치 전용 품목코드
+                        IMPLANTER_CODE_MAP = {
+                                "0.6": "OAA-2202(1)",
+                                "0.7": "OAA-2193(1)",
+                                "0.8": "OAA-2190(1)",
+                                "0.9": "OAA-2194(1)",
+                                "1.0": "OAA-2191(1)",
+                                "1.1": "OAA-2195(1)",
+                                "1.2": "OAA-2192(1)",
+                        }
 
                         for row in parsed_result:
                             item_name = str(row.get("item_name", "")).strip()
@@ -988,7 +998,13 @@ with center_col:
                                 continue
 
                             size = size_match.group(1).replace(",", ".")
-                            base_code = NEEDLE_CODE_MAP.get(size)
+                            # 품목 종류에 따라 별도 품목코드 적용
+                            if is_needle:
+                                base_code = NEEDLE_CODE_MAP.get(size)
+                            elif is_implanter:
+                                base_code = IMPLANTER_CODE_MAP.get(size)
+                            else:
+                                continue
 
                             if not base_code:
                                 continue
@@ -1213,7 +1229,7 @@ with center_col:
             item_name = str(item.get("item_name", ""))
             raw_qty = str(item.get("qty", ""))
 
-            if "장치" in item_name:
+            if "모발이식장치" in item_name:
                 # Gemini가 반환한 qty에서 실제 개수와 박스 수 확인
                 ea_match = re.search(r"(\d+)\s*개", raw_qty)
                 box_match = re.search(r"(\d+)\s*박스", raw_qty)
