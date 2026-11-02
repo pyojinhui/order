@@ -354,12 +354,19 @@ with center_col:
 - 그 외 라인 또는 규격은 주문 원문에 따라 일반 펀치류 규칙을 적용합니다.
 - 한나이브성형외과와 한나이브외과의원은 서로 다른 거래처이므로 반드시 구분합니다.
 
-9) 모래내의원, 센텀모빅스피부과의원, 더모헤어플란트피부과의원
-- 식별 키워드: 모래내, 센텀모빅스, 더모헤어플란트
+9) 모래내의원, 더모헤어플란트피부과의원
+- 식별 키워드: 모래내, 더모헤어플란트
 - 등록된 전용 모델: HFUE-TL-085K, HFUE-TL-080(M)
 - 각 모델은 주문 라인과 규격이 해당 모델의 조건에 일치하는 경우에만 적용합니다.
 - TL 0.85K 주문은 HFUE-TL-085K를 적용합니다.
 - TL 0.80 주문은 HFUE-TL-080(M)을 적용합니다.
+- 그 외 라인 또는 규격은 주문 원문에 따라 일반 펀치류 규칙을 적용합니다.
+
+10) 센텀모빅스피부과의원
+- 식별 키워드: 센텀모빅스
+- 등록된 전용 모델: HFUE-TL-085K
+- 각 모델은 주문 라인과 규격이 해당 모델의 조건에 일치하는 경우에만 적용합니다.
+- TL 0.85K 주문은 HFUE-TL-085K를 적용합니다.
 - 그 외 라인 또는 규격은 주문 원문에 따라 일반 펀치류 규칙을 적용합니다.
 
 **3. 전용 모델 적용 후 일반 모델 처리**
@@ -536,16 +543,16 @@ with center_col:
              - "식모기니들"과 "식모기"는 서로 다른 품목이므로 혼동하지 마세요.
              - 새로운 품목명이 등장하면 그 이후부터는 새 품목의 규칙을 적용합니다.
 
-             [수량 환산 규칙]
-
-             - 교체용니들: 1박스 = 20개
-             - 펀치니들: 1박스 = 10개
-             - 모발이식장치: 기본 1박스 = 5개
-             - 모발이식장치의 1박스 환산 단위는 사용자가 선택한 장치 단위 설정을 따릅니다.
-             - 장치 단위가 "5개 단위"이면 1박스 = 5개
-             - 장치 단위가 "10개 단위"이면 1박스 = 10개
-             - 장치 외의 품목은 장치 단위 설정의 영향을 받지 않습니다.
-             - 주문 수량이 "개"로 명시된 경우에는 별도 환산 없이 입력된 수량 그대로 사용합니다.
+            [수량 환산 규칙]
+            - 교체용니들: 1박스 = 20개
+            - 펀치니들: 1박스 = 10개
+            - 모발이식장치: 사용자가 선택한 장치 단위 설정을 기준으로 환산
+            - 5개 단위 선택 시: 1박스 = 5개
+            - 10개 단위 선택 시: 1박스 = 10개
+            - 모발이식장치 주문이 박스 단위로 입력된 경우, 선택된 장치 단위에 주문 박스 수를 곱하여 실제 개수를 계산합니다.
+            - 예: 2박스 주문 시 5개 단위는 10개(2박스), 10개 단위는 20개(2박스)로 출력합니다.
+            - 장치 외 품목은 장치 단위 설정의 영향을 받지 않습니다.
+            - 주문 수량이 '개'로 명시된 경우 입력된 수량을 그대로 사용합니다.
 
              - 예:
                "식모기니들 0.7 10박스" → 교체용니들 0.7 / 10박스 × 20 = 200개
@@ -1218,10 +1225,8 @@ with center_col:
                 width="stretch",
             )
 
-        selected_mode = device_unit_mode if device_unit_mode else "5개 단위 (기본)"
-        multiplier = 10 if "10개" in selected_mode else 5
-
-        selected_mode = device_unit_mode if device_unit_mode else "5개 단위 (기본)"
+        
+        selected_mode = device_unit_mode if device_unit_mode else "5개 단위"
         multiplier = 10 if "10개" in selected_mode else 5
 
         processed_rows = []
@@ -1230,31 +1235,30 @@ with center_col:
             raw_qty = str(item.get("qty", ""))
 
             if "모발이식장치" in item_name:
-                # Gemini가 반환한 qty에서 실제 개수와 박스 수 확인
-                ea_match = re.search(r"(\d+)\s*개", raw_qty)
+                # 박스 단위 주문을 우선 확인
                 box_match = re.search(r"(\d+)\s*박스", raw_qty)
+                ea_match = re.search(r"(\d+)\s*개", raw_qty)
 
-                if ea_match:
-                    # 실제 주문 수량이 개수로 표시된 경우
+                if box_match:
+                    box_count = int(box_match.group(1))
+                    calc_total = box_count * multiplier
+                    display_qty = f"{calc_total}개 ({box_count}박스)"
+
+                elif ea_match:
                     actual_qty = int(ea_match.group(1))
 
                     if actual_qty % multiplier == 0:
                         box_count = actual_qty // multiplier
-                        display_qty = f"{actual_qty}개 ({box_count}박스 × {multiplier}개)"
+                        display_qty = f"{actual_qty}개 ({box_count}박스)"
                     else:
                         display_qty = f"{actual_qty}개"
-
-                elif box_match:
-                    # 박스로 주문한 경우에만 선택 단위에 따라 계산
-                    box_count = int(box_match.group(1))
-                    calc_total = box_count * multiplier
-                    display_qty = f"{calc_total}개 ({box_count}박스 × {multiplier}개)"
 
                 else:
                     display_qty = raw_qty
 
             else:
                 display_qty = raw_qty
+
 
             processed_rows.append({
                 "No.": idx,
