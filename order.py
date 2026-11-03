@@ -808,10 +808,11 @@ with center_col:
              - 핸드피스_헤드 -> 품목코드: "META-007B", 품목명: "hand piece head(상품) (Graft1 전용)"
              - 헤드 -> 품목코드: "META-007B", 품목명: "hand piece head(상품) (Graft1 전용)"
              - 핸드피스 -> 품목코드: "META-007A", 품목명: "hand piece assy (Graft1 전용)"
-             - 천공기 -> 품목코드: "MTP-HF10", 품목명: "FUE 모낭채취장치"
+             - 천공기 -> 품목코드: "MTP-HF10", 품목명: "FUE 모낭채취장치", 
              - 모낭채취기기_버젼1 -> 품목코드: "MTP-HF10", 품목명: "FUE 모낭채취장치"
              - 모낭채취기기_FUE -> 품목코드: "MTP-HF10", 품목명: "FUE 모낭채취장치"
              - FUE_모낭채취장치 -> 품목코드: "MTP-HF10", 품목명: "FUE 모낭채취장치"
+             - Graft I, Graft 1 -> 품목코드: "MTP-HF10", 품목명: "FUE 모낭채취장치"
              - needle_controller -> 품목코드: "OHA-2064A", 품목명: "NEEDLE CONTROLLER"
              - 아우터바디 -> 품목코드: "OHA-2170A", 품목명: "OUTER BODY"
              - outer_body -> 품목코드: "OHA-2170A", 품목명: "OUTER BODY"
